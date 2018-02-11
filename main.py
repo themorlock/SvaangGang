@@ -9,11 +9,10 @@ API_SECRET = 'mmyKA0cITGghroSFMUtM46pULsuRdxvgp_LKF0jCscLnbrsu'
 #API_SECRET = 'w-nY31B7wOJ8SRlJCJ4Rfc6rj0nUnlWfJ1J9g59NPmjsL1KQ'
 SYMBOL = 'XBTUSD'
 IS_TEST = True
-RSI_PERIOD_MINUTE = (1 / 6)
+RSI_PERIOD_MINUTE = 1
 RSI_CALCULATION_PERIOD = 14
 client = 0
 rsi = 0
-balance = .1
 
 
 def rsi_thread():
@@ -67,15 +66,22 @@ def main():
     print('{:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now()), 'System will start in', str(RSI_PERIOD_MINUTE * RSI_CALCULATION_PERIOD), 'minutes.')
     _thread.start_new_thread(rsi_thread, ())
     time.sleep((RSI_PERIOD_MINUTE * RSI_CALCULATION_PERIOD * 60) + RSI_CALCULATION_PERIOD)
+    sells = 1
+    buys = 2
+    contracts_to_buy = 60
     while True:
         current_rsi = get_rsi()
         print('{:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now()), 'Current RSI is', str(current_rsi))
-        if current_rsi >= 70:
+        if current_rsi >= 68:
             print('{:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now()), 'Selling...')
-            client.Order.Order_new(symbol=SYMBOL, orderQty=60, price=get_current_price()).result()
-        elif current_rsi <= 30:
+            client.Order.Order_new(symbol=SYMBOL, orderQty=(buys * 2), price=get_current_price()).result()
+            sells = sells + contracts_to_buy
+            buys = 0
+        elif current_rsi <= 32:
             print('{:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now()), 'Buying...')
-            client.Order.Order_new(symbol=SYMBOL, orderQty=60, price=get_current_price()).result()
+            client.Order.Order_new(symbol=SYMBOL, orderQty=-(sells * 2), price=get_current_price()).result()
+            buys = buys + contracts_to_buy
+            sells = 0
         else:
             print('{:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now()), 'Holding')
         time.sleep(RSI_PERIOD_MINUTE * 60)
