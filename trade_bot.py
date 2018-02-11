@@ -89,16 +89,16 @@ class Bot:
 			curr_price = self._get_prices(count=1)[0]["bidPrice"]
 			if rsi >= self._sell_threshold:
 				self._logger.info("Selling...")
-				# self._client.Order.Order_new(symbol=self._symbol, orderQty=(buys * 2),
-					# price=curr_price).result()
+				self._client.Order.Order_new(symbol=self._symbol, orderQty=(buys * 2),
+					price=curr_price).result()
 
 				sells = sells + contracts_to_buy
 				buys = 0
 
 			elif rsi <= self._buy_threshold:
 				self._logger.info("Buying...")
-				# self._client.Order.Order_new(symbol=self._symbol, orderQty=-(sells * 2), 
-					# price=curr_price).result()
+				self._client.Order.Order_new(symbol=self._symbol, orderQty=-(sells * 2), 
+					price=curr_price).result()
 
 				buys = buys + contracts_to_buy
 				sells = 0
