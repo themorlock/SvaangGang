@@ -24,7 +24,7 @@ def setup_logging(file: str, config: dict) -> None:
 
 		logging.config.dictConfig(log_config)
 
-		level = logging.INFO if config["DEBUG"] else logging.DEBUG
+		level = logging.INFO if not config["DEBUG"] else logging.DEBUG
 		
 		console_logger = logging.getLogger("main")
 		console_logger.setLevel(level)
