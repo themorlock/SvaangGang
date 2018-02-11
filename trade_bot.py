@@ -3,6 +3,7 @@ import asyncio
 
 from bitmex import bitmex
 
+
 class Bot:
 	def __init__(self, config: dict, logger=None, client=None):
 		self._config = config
@@ -16,6 +17,9 @@ class Bot:
 		self._rsi_period = config["RSI_PERIOD"]
 		self._orders = config["ORDERS_PER_RSI"]
 		self._test = config["TEST"]
+
+		self._sell_threshold = config["RSI_SELL"]
+		self._buy_threshold = config["RSI_BUY"]
 
 		self._client = client if client else bitmex(test=self._test, 
 			api_key=self._api_key, api_secret=self._api_secret) 
@@ -32,7 +36,7 @@ class Bot:
 		quotes = self._get_prices(count=self._orders)[::-1]
 
 		for i in quotes:
-			logger.debug((i["timestamp"], i["bidPrice"]))
+			self._logger.debug((i["timestamp"], i["bidPrice"]))
 
 		prices = [float(i["bidPrice"]) for i in quotes]
 		
@@ -83,18 +87,18 @@ class Bot:
 			self._logger.info("RSI: {}".format(rsi))
 
 			curr_price = self._get_prices(count=1)[0]["bidPrice"]
-			if rsi >= 75:
+			if rsi >= self._sell_threshold:
 				self._logger.info("Selling...")
-				self._client.Order.Order_new(symbol=self._symbol, orderQty=(buys * 2),
-					price=curr_price).result()
+				# self._client.Order.Order_new(symbol=self._symbol, orderQty=(buys * 2),
+					# price=curr_price).result()
 
 				sells = sells + contracts_to_buy
 				buys = 0
 
-			elif rsi <= 30:
+			elif rsi <= self._buy_threshold:
 				self._logger.info("Buying...")
-				self._client.Order.Order_new(symbol=self._symbol, orderQty=-(sells * 2), 
-					price=curr_price).result()
+				# self._client.Order.Order_new(symbol=self._symbol, orderQty=-(sells * 2), 
+					# price=curr_price).result()
 
 				buys = buys + contracts_to_buy
 				sells = 0

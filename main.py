@@ -4,7 +4,6 @@ import logging
 import asyncio
 import yaml
 import json
-import time
 
 from bitmex import bitmex
 
@@ -47,7 +46,7 @@ def main():
 
 	client = bitmex(test=config["TEST"], api_key=config["API_KEY"],
 		api_secret=config["API_SECRET"])
-	
+
 	bot = trade_bot.Bot(config=config, logger=logging.getLogger("bot"),
 		client=client)
 
