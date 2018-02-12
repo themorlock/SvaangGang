@@ -1,3 +1,3 @@
 # SvaangGang
 
-RSI Swing trading bot on bitmex.
+RSI Swing Long/Short Bot.
