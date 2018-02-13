@@ -47,7 +47,6 @@ class Bot:
             return t.timestamp() * 1000
 
         elif self._timeframe == "3m":
-            print(3*count+1)
             t = datetime.now() - timedelta(minutes=3*count)
             return t.timestamp() * 1000
 
@@ -75,7 +74,7 @@ class Bot:
         data = self._client.fetch_ohlcv("BTC/USD", timeframe=t, since=last)[::-1]
 
         if self._timeframe == "3m":
-            return data[::2]
+            return data[::3]
 
         return data 
 
@@ -90,8 +89,6 @@ class Bot:
             p = order[4]
             self._logger.debug((datetime.utcfromtimestamp(order[0]/1000), p))
             prices.append(p)
-
-        print(len(prices))
 
         max_len = interval if interval < len(prices) else len(prices)
 
