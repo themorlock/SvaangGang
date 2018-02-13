@@ -35,11 +35,21 @@ def main():
     logger = logging.getLogger("main")
     logger.info("Starting System...")
 
-    client = bitmex({
-        "test": config["test"],
-        "apiKey": config["key"],
-        "secret": config["secret"]
-        })
+
+    if config["test"]:
+        client = bitmex({
+            "urls": {
+                "api": "https://testnet.bitmex.com",
+                "test": "https://www.bitmex.com"
+            },
+            "apiKey": config["key"],
+            "secret": config["secret"]
+            })
+    else:
+        client = bitmex({
+            "apiKey": config["key"],
+            "secret": config["secret"]
+            })
 
     bot = trading_bot.Bot(config=config, logger=logging.getLogger("bot"),
                           client=client)
