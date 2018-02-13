@@ -4,7 +4,7 @@ import asyncio
 import yaml
 import json
 
-from bitmex import bitmex
+from ccxt import bitmex
 
 import trading_bot
 
@@ -21,7 +21,7 @@ def setup_logging(file: str, config: dict) -> None:
     with open(LOG_CONFIG, "r") as f:
         log_config = yaml.load(f)
         logging.config.dictConfig(log_config)
-        level = logging.INFO if not config["DEBUG"] else logging.DEBUG
+        level = logging.INFO if not config["debug"] else logging.DEBUG
         console_logger = logging.getLogger("main")
         console_logger.setLevel(level)
         bot_logger = logging.getLogger("bot")
@@ -34,10 +34,16 @@ def main():
     setup_logging(LOG_CONFIG, config)
     logger = logging.getLogger("main")
     logger.info("Starting System...")
-    client = bitmex(test=config["TEST"], api_key=config["API_KEY"],
-                    api_secret=config["API_SECRET"])
+
+    client = bitmex({
+        "test": config["test"],
+        "apiKey": config["key"],
+        "secret": config["secret"]
+        })
+
     bot = trading_bot.Bot(config=config, logger=logging.getLogger("bot"),
                           client=client)
+
     logger.info("Connected To Servers!!!")
     logger.info("Starting")
     loop = asyncio.get_event_loop()

@@ -1,20 +1,25 @@
 {
-	"API_KEY": "jq9_Fa70fNN-JCTH9mfSmVbf",
-	"API_SECRET": "FoEWKms39K_yXL0sWy661_nTUdP9bv3X8JyE14oqcpmCinPG",
-	"SYMBOL": "XBTUSD",
-	"ORDERS_PER_RSI": 42,
-	"RSI_INTERVAL": 42,
-	"RSI_PERIOD": 60,
+	"key": "TgnQxvezIW-i-A9QFWdvB7iH",
+	"secret": "gPJMKChcXhlUv-XVrK_PV-Llphpj6Bhvw2OYHKApgw1uNLY4",
+	"symbol": "BTC/USD",
+	"orders_per_rsi": 42,
+	"rsi_period": 14,
+	"update_interval": 1,
+	"timeframe": "3m",
+
 	"RSI_SELL": 68,
 	"RSI_BUY": 32,
+
     "RSI_TRADE_AT_MIDPOINT": false,
 	"RSI_MIDPOINT": 50,
     "RSI_MIDPOINT_FLUCTUATION_TOLERANCE": 5,
 	"RSI_MIDPOINT_ORDER_RATE": 0.35,
 	"RSI_SELL_TURNOVER_RATE": 1.4,
 	"RSI_BUY_TURNOVER_RATE": 1.4,
+	"CONTRACT_PURCHASE_SIZE": 2,
     "RSI_PREVIOUS_HITS": 3,
-    "CONTRACT_PURCHASE_SIZE": 2,
-	"DEBUG": false,
-	"TEST": true
+
+	"debug": false,
+	"test": true
+
 }
