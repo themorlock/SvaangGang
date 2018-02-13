@@ -128,6 +128,7 @@ class Bot:
         previous_rsis = [-1]
         midway_traded = False
         order_book = []
+        
         while True:
 
             rsi = self._calc_rsi()
@@ -176,8 +177,6 @@ class Bot:
                         "price": current_price
                     }
 
-                    self._client.create_market_sell_order(symbol=self._symbol, amount=-current_order_qty)
-
                     order_book.append(order_data)
                     self._logger.info("Successfully Sold Midway!")
                     midway_traded = True
@@ -199,7 +198,7 @@ class Bot:
                         "price": current_price
                     }
 
-                    self._client.create_market_sell_order(symbol=self._symbol, amount=-current_order_qty)
+                    self._client.create_market_sell_order(symbol=self._symbol, amount=current_order_qty)
 
                     order_book.append(order_data)
                     self._logger.info("Successfully Sold!")
@@ -219,7 +218,7 @@ class Bot:
                         "price": current_price
                     }
 
-                    self._client.create_market_sell_order(symbol=self._symbol, amount=-current_order_qty)
+                    self._client.create_market_sell_order(symbol=self._symbol, amount=current_order_qty)
 
                     order_book.append(order_data)
                     self._logger.info("Successfully Sold!")

@@ -1,6 +1,6 @@
 {
-	"key": "TgnQxvezIW-i-A9QFWdvB7iH",
-	"secret": "gPJMKChcXhlUv-XVrK_PV-Llphpj6Bhvw2OYHKApgw1uNLY4",
+	"key": "your key here",
+	"secret": "your secret here",
 	"symbol": "BTC/USD",
 	"orders_per_rsi": 42,
 	"rsi_period": 14,
