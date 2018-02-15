@@ -1,4 +1,5 @@
 
+from datetime import datetime
 import math
 import json
 import sys
@@ -18,7 +19,7 @@ def load_data(file):
 
 
 def buy_func(base_size: int, hits: int):
-	return base_size * (hits + 1)
+	return base_size * (3*hits + 1)
 
 
 def main():
@@ -30,12 +31,13 @@ def main():
 	sell = 70
 	buy = 30
 
-	data = load_data(DATA_FILE)
+	data = load_data(DATA_FILE)[::-1]
 
 	sell_hits = 0
 	buy_hits = 0
 
 	price = data[0][4]
+	print(datetime.fromtimestamp(data[0][0]/1000))
 	print("Start!\nBtc Bal: {0: < 10} | Usd Bal: {1: < 10} \
 		| Total Btc: {2: < 10} | Total Usd: {3: < 10}".format(
 		round(btc_bal, 4), round(usd_bal, 4), 
@@ -52,24 +54,28 @@ def main():
 		if rsi <= buy:
 			amt = buy_func(size * usd_bal, buy_hits)
 
-			btc_bal += amt / price
-			usd_bal -= amt
+			if amt <= usd_bal:
 
-			sell_hits = 0
-			buy_hits += 1
+				btc_bal += amt / price
+				usd_bal -= amt
 
-			did_something = True
+				sell_hits = 0
+				buy_hits += 1
+
+				did_something = True
 
 		elif rsi >= sell:
 			amt = buy_func(size * btc_bal, sell_hits)
 
-			btc_bal -= amt
-			usd_bal += amt * price
+			if amt <= btc_bal:
 
-			sell_hits += 1
-			buy_hits = 0
+				btc_bal -= amt
+				usd_bal += amt * price
 
-			did_something = True
+				sell_hits += 1
+				buy_hits = 0
+
+				did_something = True
 
 
 		# if did_something:
@@ -79,6 +85,8 @@ def main():
 		round(btc_bal, 4), round(usd_bal, 4), 
 		round(btc_bal + usd_bal / price, 4),
 		round(btc_bal * price + usd_bal, 4)))
+
+	print(datetime.fromtimestamp(data[-1][0]/1000))
 
 
 if __name__ == '__main__':

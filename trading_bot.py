@@ -66,7 +66,7 @@ class Bot:
 
 		t = self._timeframe
 		t = t if t != "3m" else "1m"
-		data = self._client.fetch_ohlcv("BTC/USD", timeframe=t, since=last)[::-1]
+		data = self._client.fetch_ohlcv("BTC/USD", timeframe=t, since=last)
 
 		if self._timeframe == "3m":
 			return data[::3]
