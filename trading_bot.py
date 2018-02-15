@@ -82,6 +82,8 @@ class Bot:
 
 		while True:
 
+			current_price = self._curr_price() 
+
 			bal = self._client.fetch_balance()["BTC"]
 
 			print(bal)
