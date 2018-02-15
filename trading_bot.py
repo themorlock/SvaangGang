@@ -112,6 +112,15 @@ class Bot:
 				if amt > 0:
 					self._client.create_market_sell_order(symbol=self._symbol, amount=amt)
 
+<<<<<<< HEAD
+=======
+    async def start(self):
+        previous_rsis = [-1]
+        midway_traded = False
+        order_book = []
+        
+        while True:
+>>>>>>> a064b837fc707bd79cd688b4194ef783253d09e1
 
 				sell_hits = 0
 				buy_hits += 1
@@ -127,3 +136,133 @@ class Bot:
 
 			await asyncio.sleep(int(self._interval * 60))
 
+<<<<<<< HEAD
+=======
+                    self._client.create_market_buy_order(symbol=self._symbol, amount=current_order_qty)
+
+                    order_book.append(order_data)
+                    self._logger.info("Successfully Bought Midway!")
+                    midway_traded = True
+
+                elif all(0 <= previous_rsi <= self._buy_threshold for previous_rsi in previous_rsis):
+                    for i in range(0, len(order_book)):
+                        if order_book[i]["orderType"] == "buy":
+                            current_order_qty = int(order_book[i]["orderQty"] * self._rsi_midpoint_order_rate)
+                            order_book.pop(i)
+                            break
+
+                    self._logger.info("Selling Midway...")
+
+                    order_data = {
+                        "orderType": "sell",
+                        "symbol": self._symbol,
+                        "orderQty": current_order_qty,
+                        "price": current_price
+                    }
+
+                    order_book.append(order_data)
+                    self._logger.info("Successfully Sold Midway!")
+                    midway_traded = True
+
+            elif rsi >= self._sell_threshold:
+                try:
+                    current_order_qty = self._contract_purchase_size
+                    for i in range(0, len(order_book)):
+                        if order_book[i]["orderType"] == "buy":
+                            current_order_qty = int(order_book[i]["orderQty"] * self._rsi_buy_turnover_rate)
+                            order_book.pop(i)
+                            break
+
+                    self._logger.info("Selling...")
+                    order_data = {
+                        "orderType": "sell",
+                        "symbol": self._symbol,
+                        "orderQty": current_order_qty,
+                        "price": current_price
+                    }
+
+                    self._client.create_market_sell_order(symbol=self._symbol, amount=current_order_qty)
+
+                    order_book.append(order_data)
+                    self._logger.info("Successfully Sold!")
+                    midway_traded = False
+
+                except:
+                    for i in range(0, len(order_book)):
+                        if order_book[i]["orderType"] == "buy":
+                            current_order_qty = int(order_book[i]["orderQty"])
+                            order_book.pop(i)
+                            break
+                    self._logger.info("Selling...")
+                    order_data = {
+                        "orderType": "sell",
+                        "symbol": self._symbol,
+                        "orderQty": current_order_qty,
+                        "price": current_price
+                    }
+
+                    self._client.create_market_sell_order(symbol=self._symbol, amount=current_order_qty)
+
+                    order_book.append(order_data)
+                    self._logger.info("Successfully Sold!")
+                    midway_traded = False
+
+            elif rsi <= self._buy_threshold:
+                try:
+                    current_order_qty = self._contract_purchase_size
+                    for i in range(0, len(order_book)):
+                        if order_book[i]["orderType"] == "sell":
+                            current_order_qty = int(order_book[i]["orderQty"] * self._rsi_sell_turnover_rate)
+                            order_book.pop(i)
+                            break
+
+                    self._logger.info("Buying...")
+
+                    order_data = {
+                        "orderType": "buy",
+                        "symbol": self._symbol,
+                        "orderQty": current_order_qty,
+                        "price": current_price
+                    }
+
+                    self._client.create_market_buy_order(symbol=self._symbol, amount=current_order_qty)
+
+                    order_book.append(order_data)
+                    self._logger.info("Successfully Bought!")
+                    midway_traded = False
+
+                except:
+                    for i in range(0, len(order_book)):
+                        if order_book[i]["orderType"] == "sell":
+                            current_order_qty = int(order_book[i]["orderQty"])
+                            order_book.pop(i)
+                            break
+                    self._logger.info("Buying...")
+
+                    order_data = {
+                        "orderType": "buy",
+                        "symbol": self._symbol,
+                        "orderQty": current_order_qty,
+                        "price": current_price
+                    }
+
+                    self._client.create_market_buy_order(symbol=self._symbol, amount=current_order_qty)
+
+                    order_book.append(order_data)
+
+                    self._logger.info("Successfully Bought!")
+
+                    midway_traded = False
+            else:
+                self._logger.info("Holding")
+
+            if len(previous_rsis) == self._rsi_previous_hits:
+                previous_rsis.pop(0)
+
+            previous_rsis.append(rsi)
+
+            self._logger.info("Curr Balance {}".format(
+                self._client.fetch_balance()["total"]["BTC"]))
+
+            await asyncio.sleep(int(self._update_interval * 60))
+>>>>>>> a064b837fc707bd79cd688b4194ef783253d09e1
