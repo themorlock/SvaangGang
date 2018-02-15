@@ -51,6 +51,7 @@ def main():
             "secret": config["secret"]
             })
 
+
     bot = trading_bot.Bot(config=config, logger=logging.getLogger("bot"),
                           client=client)
 

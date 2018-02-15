@@ -33,11 +33,10 @@ def main():
 		except ccxt.DDoSProtection as e:
 			print(e)
 
-
 		time.sleep(2) # bitmex timer, you can soemtimes get around not using it
 
 
-	with open("data.json", "r") as f:
+	with open("data.json", "w") as f:
 		json.dump(data, f)
 
 	print(target, last)

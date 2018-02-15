@@ -86,8 +86,6 @@ class Bot:
 
 			bal = self._client.fetch_balance()["BTC"]
 
-			print(bal)
-
 			free = bal["free"]
 
 			data = self._get_history(count=self._orders)
@@ -102,7 +100,6 @@ class Bot:
 					amt = int(amt * current_price)
 					self._client.create_market_sell_order(symbol=self._symbol, amount=amt)
 
-
 					self._logger.info("Selling {0: < 4} at {1}".format(amt, current_price))
 
 					sell_hits += 1
@@ -114,7 +111,7 @@ class Bot:
 
 				if amt <= free:
 					amt = int(amt * current_price)
-					self._client.create_market_sell_order(symbol=self._symbol, amount=amt)
+					self._client.create_market_buy_order(symbol=self._symbol, amount=amt)
 
 					self._logger.info("Buying {0: < 4} at {1}".format(amt, current_price))
 

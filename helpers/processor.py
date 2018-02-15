@@ -14,11 +14,15 @@ def calc_rsi(data: list, period: int = 14) -> int:
 	gains = []
 
 	for i in range(1, max_len):
-		change = prices[i] - prices[i-1]
-		if change < 0:
-			losses.append(abs(change))
-		elif change > 0:
-			gains.append(change)
+		try:
+			change = prices[i] - prices[i-1]
+			if change < 0:
+				losses.append(abs(change))
+			elif change > 0:
+				gains.append(change)
+		except TypeError as e:
+			print(e + " " + prices)
+
 
 	avg_loss = sum(losses) / period
 	avg_gain = sum(gains) / period
