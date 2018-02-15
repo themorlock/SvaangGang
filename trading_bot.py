@@ -112,6 +112,11 @@ class Bot:
 				if amt > 0:
 					self._client.create_market_sell_order(symbol=self._symbol, amount=amt)
 
+				self._logger.info("Buying {0: < 4} at {1}".format(amt, current_price))
+
+				sell_hits = 0
+				buy_hits += 1
+
 
 			await asyncio.sleep(int(self._interval * 60))
 
