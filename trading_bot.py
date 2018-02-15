@@ -78,6 +78,10 @@ class Bot:
 
 		sell_hits = 0
 		buy_hits = 0
+
+		sell_size = 0
+		buy_size = 0
+
 		size = 0.1
 
 		while True:
@@ -100,24 +104,34 @@ class Bot:
 					amt = int(amt * current_price)
 					self._client.create_market_sell_order(symbol=self._symbol, amount=amt)
 
-					self._logger.info("Selling {0: < 4} at {1}".format(amt, current_price))
+					self._logger.info("Selling {0: < 4} at {1}".format(
+						amt + buy_size, current_price))
 
+					sell_size += amt
 					sell_hits += 1
 					buy_hits = 0
+					buy_size = 0
 
 
 			elif rsi <= self._buy:
-				amt = processor.buy_func(free * size, sell_hits)
+				amt = processor.buy_func(free * size, buy_hits)
 
 				if amt <= free:
 					amt = int(amt * current_price)
 					self._client.create_market_buy_order(symbol=self._symbol, amount=amt)
 
-					self._logger.info("Buying {0: < 4} at {1}".format(amt, current_price))
+					self._logger.info("Buying {0: < 4} at {1}".format(
+						amt + sell_size, current_price))
 
+					sell_size = 0
 					sell_hits = 0
+					buy_size += amt
 					buy_hits += 1
 
+
+			tot = bal["total"]
+			self._logger.info("Current Balance: {0} BTC {1} USd".format(
+				round(tot, 6), round(tot * current_price, 4)))
 
 			await asyncio.sleep(int(self._interval * 60))
 
