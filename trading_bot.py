@@ -112,3 +112,6 @@ class Bot:
 				if amt > 0:
 					self._client.create_market_sell_order(symbol=self._symbol, amount=amt)
 
+
+			await asyncio.sleep(int(self._interval * 60))
+
