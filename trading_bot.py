@@ -96,26 +96,28 @@ class Bot:
 			if rsi >= self._sell:
 				amt = processor.buy_func(free * size, sell_hits)
 
-				if amt > 0:
+				if amt <= free:
+					amt = int(amt * current_price)
 					self._client.create_market_sell_order(symbol=self._symbol, amount=amt)
 
 
-				self._logger.info("Selling {0: < 4} at {1}".format(amt, current_price))
+					self._logger.info("Selling {0: < 4} at {1}".format(amt, current_price))
 
-				sell_hits += 1
-				buy_hits = 0
+					sell_hits += 1
+					buy_hits = 0
 
 
 			elif rsi <= self._buy:
 				amt = processor.buy_func(free * size, sell_hits)
 
-				if amt > 0:
+				if amt <= free:
+					amt = int(amt * current_price)
 					self._client.create_market_sell_order(symbol=self._symbol, amount=amt)
 
-				self._logger.info("Buying {0: < 4} at {1}".format(amt, current_price))
+					self._logger.info("Buying {0: < 4} at {1}".format(amt, current_price))
 
-				sell_hits = 0
-				buy_hits += 1
+					sell_hits = 0
+					buy_hits += 1
 
 
 			await asyncio.sleep(int(self._interval * 60))
