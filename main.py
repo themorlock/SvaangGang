@@ -4,9 +4,9 @@ import asyncio
 import yaml
 import json
 
-from ccxt import bitmex
-
 import trading_bot
+
+from ccxt import bitmex
 
 BOT_CONFIG = "config.json"
 LOG_CONFIG = "log_conf.yaml"
@@ -27,7 +27,6 @@ def setup_logging(file: str, config: dict) -> None:
         bot_logger = logging.getLogger("bot")
         bot_logger.setLevel(level)
         console_logger.debug("Set up logging")
-
 
 def main():
     config = get_config(BOT_CONFIG)
@@ -62,6 +61,5 @@ def main():
     loop.run_until_complete(future)
     loop.close()
 
-
 if __name__ == "__main__":
-    main()
+    main() 

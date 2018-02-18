@@ -1,13 +1,17 @@
 {
-	"key": "your key here",
-	"secret": "your secret here",
-	"symbol": "BTC/USD",
-	"orders_per_rsi": 7,
-	"rsi_period": 7,
-	"interval": 1,
-	"timeframe": "1m",
-	"sell": 70,
-	"buy": 30,
-	"debug": false,
-	"test": true
+	"key": "tr3gQAG4QWuAbCmU524IWmfW",
+    "secret": "pHd3FQ-5eEl94QAf-JcQm4ZyTaqKXCo0WVl0UmjX44GPL8sB",
+    "test": false,
+    "symbol": "BTC/USD",
+    "time_delay": 0,
+
+	"rsi_period_time": 3,
+	"rsi_calculation_period": 2,
+	"rsi_sell": 68,
+    "rsi_buy": 32,
+
+    "purchase_size_percentage": 0.12,
+
+    "bot_refresh_speed": 12,
+	"debug": false
 }
