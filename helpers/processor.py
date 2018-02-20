@@ -1,11 +1,9 @@
 
 from datetime import datetime, timedelta
 
-def calc_rsi(data: list, period: int) -> float:
+def calculate_rsi(prices: list, period: int) -> float:
 
-	max_len = period if period < len(data) else len(data)
-
-	prices = [i[4] for i in data]
+	max_len = period if period < len(prices) else len(prices)
 
 	losses = []
 	gains = []

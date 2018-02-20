@@ -1,5 +1,5 @@
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import asyncio
 import sys
 
@@ -7,7 +7,6 @@ from ccxt import bitmex
 
 sys.path.append("helpers")
 import processor
-
 
 class Bot:
 	def __init__(self, config: dict, logger=None, client=None):
@@ -52,7 +51,7 @@ class Bot:
 		dist = self._rsi_period * self._rsi_timeframe
 		base = self._client.fetch_ticker("BTC/USD")["timestamp"] / 1000
 		
-		since = datetime.fromtimestamp(base) - timedelta(minutes-dist)
+		since = datetime.fromtimestamp(base) - timedelta(minutes=dist)
 
 		prices = self._client.fetch_ohlcv(self._symbol, "1m",
 			since=since.timestamp()*1000)[:-1]
@@ -91,8 +90,8 @@ class Bot:
 				current_order_size = int(current_price * current_order_size)
 
 				if curr_bought > 0:
-					self._logger.info("Closing previous position by buying {0: < 4} at {1}"\
-						.format(curr_sold, current_price))
+					self._logger.info("Closing previous position by selling {0: < 4} at {1}"\
+						.format(curr_bought, current_price))
 
 				self._logger.info("Selling {0: < 4} at {1}".format(
 					current_order_size, self._get_current_price()))
@@ -119,6 +118,10 @@ class Bot:
 					current_order_size = available_balance
 
 				current_order_size = int(current_price * current_order_size)
+
+				if curr_sold > 0:
+					self._logger.info("Closing previous position by buying {0: < 4} at {1}"\
+						.format(curr_sold, current_price))
 
 				self._logger.info("Buying {0: < 4} at {1}".format(
 					current_order_size, self._get_current_price()))
