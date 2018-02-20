@@ -51,9 +51,11 @@ class Bot:
 
 		dist = self._rsi_period * self._rsi_timeframe
 		base = self._client.fetch_ticker("BTC/USD")["timestamp"] / 1000
-		since = processor.get_timestamp(dist, base)
+		
+		since = datetime.fromtimestamp(base) - timedelta(minutes-dist)
 
-		prices = self._client.fetch_ohlcv(self._symbol, "1m", since=since*1000)[:-1]
+		prices = self._client.fetch_ohlcv(self._symbol, "1m",
+			since=since.timestamp()*1000)[:-1]
 
 		close_prices = [p[4] for p in prices]
 
