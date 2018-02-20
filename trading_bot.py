@@ -1,13 +1,13 @@
 
-from datetime import datetime, timedelta
+from datetime import datetime
 import asyncio
 import sys
 
 from ccxt import bitmex
 
-sys.path.append("helpers/")
-
+sys.path.append("helpers")
 import processor
+
 
 class Bot:
 	def __init__(self, config: dict, logger=None, client=None):
@@ -16,108 +16,108 @@ class Bot:
 
 		self._symbol = config["symbol"]
 
-		self._timeframe = config["timeframe"]
+		self._rsi_timeframe = config["rsi_timeframe"]
 		self._rsi_period = config["rsi_period"]
-		self._orders = config["orders_per_rsi"]
+		self._rsi_sell = config["rsi_sell"]
+		self._rsi_buy = config["rsi_buy"]
 
-		self._sell = config["sell"]
-		self._buy = config["buy"]
+		self._purchase_size_percentage = config["purchase_size_percentage"]
 
-		self._interval = config["interval"]
+		self._bot_refresh_speed = config["bot_refresh_speed"]
 
 		if client:
 			self._client = client
-
-		else: 
+		else:
 			self._client = bitmex({
 				"test": config["test"],
-				"apiKey": config["key"],
+				"apiKey": config["apiKey"],
 				"secret": config["secret"]
-				})
+			})
 
 
-	def _get_timestamp(self, count) -> int:
-		if self._timeframe == "1m":
-			t = datetime.now() - timedelta(minutes=count)
-			return t.timestamp() * 1000
+	def _calculate_purchase_size(self, base_purchase_size: int, hits: int):
+		return base_purchase_size * (1.61*hits + 1)
 
-		elif self._timeframe == "3m":
-			t = datetime.now() - timedelta(minutes=3*count)
-			return t.timestamp() * 1000
-
-		elif self._timeframe == "5m":
-			t = datetime.now() - timedelta(minutes=5*count)
-			return t.timestamp() * 1000
-
-		elif self._timeframe == "1h":
-			t = datetime.now() - timedelta(hours=count)
-			return (datetime.now() - timedelta(hours=count)).timestamp() * 1000
-
-		t = datetime.now() - timedelta(days=count)
-		return t.timestamp() * 1000
+	
+	def _get_available_balance(self):
+		return self._client.fetch_balance()[self._symbol[:self._symbol.index("/")]]["free"]
 
 
-	def _curr_price(self) -> float:
-		return self._client.fetch_ticker("BTC/USD")["close"]
+	def _get_current_price(self) -> float:
+		return self._client.fetch_ticker(self._symbol)["close"]
 
 
-	def _get_history(self, count=1) -> float:
-		last = self._get_timestamp(count)
+	def _get_historical_data(self):
 
-		t = self._timeframe
-		t = t if t != "3m" else "1m"
-		data = self._client.fetch_ohlcv("BTC/USD", timeframe=t, since=last)[::-1]
+		dist = self._rsi_period * self._rsi_timeframe
+		base = self._client.fetch_ticker("BTC/USD")["timestamp"] / 1000
+		since = processor.get_timestamp(dist, base)
 
-		if self._timeframe == "3m":
-			return data[::3]
+		prices = self._client.fetch_ohlcv(self._symbol, "1m", since=since*1000)[:-1]
 
-		return data 
+		close_prices = [p[4] for p in prices]
+
+		self._logger.debug(close_prices)
+
+		return close_prices
 
 
 	async def start(self):
 
 		sell_hits = 0
 		buy_hits = 0
-		size = 0.1
+
+		curr_bought = 0 
+		curr_sold = 0
 
 		while True:
+			available_balance = self._get_available_balance()
+			current_price = self._get_current_price()
 
-			current_price = self._curr_price() 
+			prices = self._get_historical_data()
+			current_rsi = processor.calculate_rsi(prices, self._rsi_period)
 
-			bal = self._client.fetch_balance()["BTC"]
+			self._logger.info("RSI: is {}".format(current_rsi))
 
-			free = bal["free"]
+			if current_rsi >= self._rsi_sell:
+				current_order_size = self._calculate_purchase_size(available_balance * self._purchase_size_percentage, sell_hits)
 
-			data = self._get_history(count=self._orders)
-			rsi = processor.calc_rsi(data)
+				if current_order_size > available_balance:
+					current_order_size = available_balance
 
-			self._logger.info("RSI: {}".format(rsi))
+				current_order_size = int(current_price * current_order_size)
 
-			if rsi >= self._sell:
-				amt = processor.buy_func(free * size, sell_hits)
+				self._logger.info("Selling {0: < 4} at {1}".format(current_order_size, self._get_current_price()))
 
-				if amt <= free:
-					amt = int(amt * current_price)
-					self._client.create_market_sell_order(symbol=self._symbol, amount=amt)
+				self._client.create_market_sell_order(symbol=self._symbol, amount=current_order_size + curr_bought)
 
-					self._logger.info("Selling {0: < 4} at {1}".format(amt, current_price))
+				curr_sold += current_order_size
+				curr_bought = 0
 
-					sell_hits += 1
-					buy_hits = 0
-
-
-			elif rsi <= self._buy:
-				amt = processor.buy_func(free * size, sell_hits)
-
-				if amt <= free:
-					amt = int(amt * current_price)
-					self._client.create_market_buy_order(symbol=self._symbol, amount=amt)
-
-					self._logger.info("Buying {0: < 4} at {1}".format(amt, current_price))
-
-					sell_hits = 0
-					buy_hits += 1
+				sell_hits += 1
+				buy_hits = 0 
 
 
-			await asyncio.sleep(int(self._interval * 60))
+			elif current_rsi <= self._rsi_buy:
+				current_order_size = self._calculate_purchase_size(available_balance * self._purchase_size_percentage, buy_hits)
 
+				if current_order_size > available_balance:
+					current_order_size = available_balance
+
+				current_order_size = int(current_price * current_order_size)
+
+				self._logger.info("Buying {0: < 4} at {1}".format(current_order_size, self._get_current_price()))
+				
+				self._client.create_market_buy_order(symbol=self._symbol, amount=current_order_size + curr_sold)
+
+				curr_bought += current_order_size
+				curr_sold = 0
+
+				buy_hits += 1
+				sell_hits = 0
+
+			
+			else:
+				self._logger.info("Holding")
+
+			await asyncio.sleep(self._bot_refresh_speed)
