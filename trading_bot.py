@@ -1,5 +1,5 @@
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import asyncio
 import sys
 
@@ -7,7 +7,6 @@ from ccxt import bitmex
 
 sys.path.append("helpers")
 import processor
-
 
 class Bot:
 	def __init__(self, config: dict, logger=None, client=None):
@@ -51,9 +50,11 @@ class Bot:
 
 		dist = self._rsi_period * self._rsi_timeframe
 		base = self._client.fetch_ticker("BTC/USD")["timestamp"] / 1000
-		since = processor.get_timestamp(dist, base)
+		
+		since = datetime.fromtimestamp(base) - timedelta(minutes=dist)
 
-		prices = self._client.fetch_ohlcv(self._symbol, "1m", since=since*1000)[:-1]
+		prices = self._client.fetch_ohlcv(self._symbol, "1m",
+			since=since.timestamp()*1000)[:-1]
 
 		close_prices = [p[4] for p in prices]
 
@@ -80,16 +81,27 @@ class Bot:
 			self._logger.info("RSI: is {}".format(current_rsi))
 
 			if current_rsi >= self._rsi_sell:
-				current_order_size = self._calculate_purchase_size(available_balance * self._purchase_size_percentage, sell_hits)
+				current_order_size = self._calculate_purchase_size(
+					available_balance * self._purchase_size_percentage, sell_hits)
 
 				if current_order_size > available_balance:
 					current_order_size = available_balance
 
 				current_order_size = int(current_price * current_order_size)
 
-				self._logger.info("Selling {0: < 4} at {1}".format(current_order_size, self._get_current_price()))
+				if curr_bought > 0:
+					self._logger.info("Closing previous position by selling {0: < 4} at {1}"\
+						.format(curr_bought, current_price))
 
-				self._client.create_market_sell_order(symbol=self._symbol, amount=current_order_size + curr_bought)
+				self._logger.info("Selling {0: < 4} at {1}".format(
+					current_order_size, self._get_current_price()))
+
+				try:
+					self._client.create_market_sell_order(
+						symbol=self._symbol, amount=current_order_size + curr_bought)
+				except ccxt.ExchangeEror as e:
+					print("Failed order:", e)
+
 
 				curr_sold += current_order_size
 				curr_bought = 0
@@ -99,16 +111,26 @@ class Bot:
 
 
 			elif current_rsi <= self._rsi_buy:
-				current_order_size = self._calculate_purchase_size(available_balance * self._purchase_size_percentage, buy_hits)
+				current_order_size = self._calculate_purchase_size(
+					available_balance * self._purchase_size_percentage, buy_hits)
 
 				if current_order_size > available_balance:
 					current_order_size = available_balance
 
 				current_order_size = int(current_price * current_order_size)
 
-				self._logger.info("Buying {0: < 4} at {1}".format(current_order_size, self._get_current_price()))
+				if curr_sold > 0:
+					self._logger.info("Closing previous position by buying {0: < 4} at {1}"\
+						.format(curr_sold, current_price))
+
+				self._logger.info("Buying {0: < 4} at {1}".format(
+					current_order_size, self._get_current_price()))
 				
-				self._client.create_market_buy_order(symbol=self._symbol, amount=current_order_size + curr_sold)
+				try:
+					self._client.create_market_buy_order(
+						symbol=self._symbol, amount=current_order_size + curr_sold)
+				except ccxt.ExchangeEror as e:
+					print("Failed order:", e)
 
 				curr_bought += current_order_size
 				curr_sold = 0
