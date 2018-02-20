@@ -80,16 +80,27 @@ class Bot:
 			self._logger.info("RSI: is {}".format(current_rsi))
 
 			if current_rsi >= self._rsi_sell:
-				current_order_size = self._calculate_purchase_size(available_balance * self._purchase_size_percentage, sell_hits)
+				current_order_size = self._calculate_purchase_size(
+					available_balance * self._purchase_size_percentage, sell_hits)
 
 				if current_order_size > available_balance:
 					current_order_size = available_balance
 
 				current_order_size = int(current_price * current_order_size)
 
-				self._logger.info("Selling {0: < 4} at {1}".format(current_order_size, self._get_current_price()))
+				if curr_bought > 0:
+					self._logger.info("Closing previous position by buying {0: < 4} at {1}"\
+						.format(curr_sold, current_price))
 
-				self._client.create_market_sell_order(symbol=self._symbol, amount=current_order_size + curr_bought)
+				self._logger.info("Selling {0: < 4} at {1}".format(
+					current_order_size, self._get_current_price()))
+
+				try:
+					self._client.create_market_sell_order(
+						symbol=self._symbol, amount=current_order_size + curr_bought)
+				except ccxt.ExchangeEror as e:
+					print("Failed order:", e)
+
 
 				curr_sold += current_order_size
 				curr_bought = 0
@@ -99,16 +110,22 @@ class Bot:
 
 
 			elif current_rsi <= self._rsi_buy:
-				current_order_size = self._calculate_purchase_size(available_balance * self._purchase_size_percentage, buy_hits)
+				current_order_size = self._calculate_purchase_size(
+					available_balance * self._purchase_size_percentage, buy_hits)
 
 				if current_order_size > available_balance:
 					current_order_size = available_balance
 
 				current_order_size = int(current_price * current_order_size)
 
-				self._logger.info("Buying {0: < 4} at {1}".format(current_order_size, self._get_current_price()))
+				self._logger.info("Buying {0: < 4} at {1}".format(
+					current_order_size, self._get_current_price()))
 				
-				self._client.create_market_buy_order(symbol=self._symbol, amount=current_order_size + curr_sold)
+				try:
+					self._client.create_market_buy_order(
+						symbol=self._symbol, amount=current_order_size + curr_sold)
+				except ccxt.ExchangeEror as e:
+					print("Failed order:", e)
 
 				curr_bought += current_order_size
 				curr_sold = 0

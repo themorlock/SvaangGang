@@ -136,7 +136,8 @@ def main():
 	buy = 30
 
 	# stuff to test
-	rsi_periods = [i for i in range(2, 15)]
+	rsi_periods = [14]
+	rsi_data_size = [1000]
 	order_sizes = [0.12]
 
 	data = load_data(DATA_FILE)[::-1]
@@ -153,21 +154,25 @@ def main():
 
 	for period in rsi_periods:
 		for order_size in order_sizes:
+			for data_size in rsi_data_size:
 
-			btc_bal, usd_bal, hist = run_simul(data, lin_buy_func, btc_bal=init_btc_bal,
-				usd_bal=init_usd_bal, rsi_period=period, orders_per_rsi=period, return_hist=True)
+				btc_bal, usd_bal, hist = run_simul(data, lin_buy_func, 
+					btc_bal=init_btc_bal, usd_bal=init_usd_bal, 
+					rsi_period=period, orders_per_rsi=data_size, 
+					return_hist=True)
 
-			total_btc_bal = round(btc_bal + usd_bal / price, 6)
-			total_usd_bal = round(btc_bal * price + usd_bal, 2)
-			gain = round(total_btc_bal / init_btc_bal, 2)
+				total_btc_bal = round(btc_bal + usd_bal / price, 6)
+				total_usd_bal = round(btc_bal * price + usd_bal, 2)
+				gain = round(total_btc_bal / init_btc_bal, 2)
 
-			print("\nRSI Period: {} Order Size: {} Finished".format(period, order_size))
+				print("\nRSI Period: {0} Order Size: {1} RSI Data Size {2}"\
+					.format(period, order_size, data_size))
 
-			text = "End\nBtc Bal: {0: < 6} | Usd Bal: {1: < 6} | Total Btc: {2: < 8} | Total Usd: {3: < 6} | Gain: {4: < 6}"
-			print(text.format(
-				round(btc_bal, 4), round(usd_bal, 4),
-				total_btc_bal, total_usd_bal, gain)
-			)
+				text = "End\nBtc Bal: {0: < 6} | Usd Bal: {1: < 6} | Total Btc: {2: < 8} | Total Usd: {3: < 6} | Gain: {4: < 6}"
+				print(text.format(
+					round(btc_bal, 4), round(usd_bal, 4),
+					total_btc_bal, total_usd_bal, gain)
+				)
 
 
 if __name__ == '__main__':
