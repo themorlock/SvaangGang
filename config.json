@@ -1,17 +1,15 @@
 {
-	"key": "tr3gQAG4QWuAbCmU524IWmfW",
-    "secret": "pHd3FQ-5eEl94QAf-JcQm4ZyTaqKXCo0WVl0UmjX44GPL8sB",
-    "test": false,
-    "symbol": "BTC/USD",
-    "time_delay": 0,
+	"secret": "your secret here",
+	"key": "your key here",
+	"symbol": "BTC/USD",
+	"test": true,
 
-	"rsi_period_time": 3,
-	"rsi_calculation_period": 2,
+	"rsi_timeframe": 1,
+	"rsi_period": 4,
 	"rsi_sell": 68,
-    "rsi_buy": 32,
+	"rsi_buy": 32,
 
-    "purchase_size_percentage": 0.12,
-
-    "bot_refresh_speed": 12,
+	"purchase_size_percentage": 0.12,
+	"bot_refresh_speed": 60,
 	"debug": false
 }
