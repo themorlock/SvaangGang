@@ -1,15 +1,13 @@
-import logging.config
+
 import logging
 import asyncio
-import yaml
 import json
 
 import trading_bot
 
-from ccxt import bitmex
+import ccxt.async as ccxt
 
 BOT_CONFIG = "config.json"
-LOG_CONFIG = "log_conf.yaml"
 
 
 def get_config(file: str) -> dict:
@@ -17,27 +15,29 @@ def get_config(file: str) -> dict:
 		return json.load(f)
 
 
-def setup_logging(file: str, config: dict) -> None:
-	with open(LOG_CONFIG, "r") as f:
-		log_config = yaml.load(f)
-		logging.config.dictConfig(log_config)
-		level = logging.INFO if not config["debug"] else logging.DEBUG
-		console_logger = logging.getLogger("main")
-		console_logger.setLevel(level)
-		bot_logger = logging.getLogger("bot")
-		bot_logger.setLevel(level)
-		console_logger.debug("Set up logging")
+def setup_logging(config: dict) -> None:
+	logger = logging.getLogger()
+
+	level = logging.DEBUG if config["debug"] else logging.INFO
+
+	f_handler = logging.FileHandler(filename="svaang.log", encoding="utf-8", mode="w")
+	cl_handler = logging.StreamHandler()
+
+	dt_fmt = "%Y-%m-%d %H:%M:%S"
+	fmt = logging.Formatter("[{asctime}] [{levelname:<6}] {name}: {message}", 
+		dt_fmt, style="{")
+
+	cl_handler.setFormatter(fmt)
+	f_handler.setFormatter(fmt)
+
+	logger.addHandler(cl_handler)
+	logger.addHandler(f_handler)
+	logger.setLevel(level)
 
 
-def main():
-	config = get_config(BOT_CONFIG)
-	setup_logging(LOG_CONFIG, config)
-	logger = logging.getLogger("main")
-	logger.info("Starting System...")
-
-
+def get_exchange(config: dict) -> ccxt.exchange:
 	if config["test"]:
-		client = bitmex({
+		client = ccxt.bitmex({
 			"urls": {
 				"api": "https://testnet.bitmex.com",
 				"test": "https://www.bitmex.com"
@@ -46,23 +46,34 @@ def main():
 			"secret": config["secret"]
 			})
 	else:
-		client = bitmex({
+		client = ccxt.bitmex({
 			"apiKey": config["key"],
 			"secret": config["secret"]
 			})
 
+	return client
+
+
+def main():
+	config = get_config(BOT_CONFIG)
+
+	setup_logging(LOG_CONFIG, config)
+
+	logger = logging.getLogger()
+	logger.info("Starting System...")
+
+	exchange = get_exchange(config)
 
 	logger.info("Connected To Servers!!!")
-	# client.create_market_sell_order(symbol="BTC/USD", amount=100)
-	# client.create_market_buy_order(symbol="BTC/USD", amount=50)
 
-	bot = trading_bot.Bot(config=config, logger=logging.getLogger("bot"),
-						  client=client)
+	bot = trading_bot.Bot(config=config, logger=logger, client=client)
+
 	logger.info("Starting")
+
 	loop = asyncio.get_event_loop()
-	future = asyncio.ensure_future(bot.start())
-	loop.run_until_complete(future)
+	loop.run_until_complete(bot.start())
 	loop.close()
+
 
 if __name__ == "__main__":
 	main() 

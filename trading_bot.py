@@ -1,15 +1,17 @@
 
 from datetime import datetime, timedelta
+import tenacity
+import logging
 import asyncio
 import sys
 
-from ccxt import bitmex
+import ccxt.async as ccxt
 
 sys.path.append("helpers")
 import processor
 
 class Bot:
-	def __init__(self, config: dict, logger=None, client=None):
+	def __init__(self, config: dict, logger, exchange=None):
 		self._config = config
 		self._logger = logger
 
@@ -22,39 +24,64 @@ class Bot:
 
 		self._purchase_size_percentage = config["purchase_size_percentage"]
 
-		self._bot_refresh_speed = config["bot_refresh_speed"]
+		self._update_interval = config["update_interval"]
 
-		if client:
-			self._client = client
+		if exchange:
+			self._exchange = exchange
 		else:
-			self._client = bitmex({
+			self._exchange = ccxt.bitmex({
 				"test": config["test"],
 				"apiKey": config["apiKey"],
 				"secret": config["secret"]
 			})
+
+		self._aretry = tenacity.AsyncRetrying(
+			wait=tenacity.wait_random(0, 2),
+			retry=(
+				tenacity.retry_if_exception(ccxt.DDoSProtection) | 
+				tenacity.retry_if_exception(ccxt.RequestTimeout)
+				)
+			)
+
+		self._active_markets = {}
+		if self._symbol:
+			self._active_markets[symbol] = {"buys": 0, "sells": 0}
 
 
 	def _calculate_purchase_size(self, base_purchase_size: int, hits: int):
 		return base_purchase_size * (1.61*hits + 1)
 
 	
-	def _get_available_balance(self):
-		return self._client.fetch_balance()[self._symbol[:self._symbol.index("/")]]["free"]
+	async def _get_available_balance(self):
+		bal = await self._exchange.fetch_balance()
+		self._logger.debug(bal)
+
+		return bal[self._symbol[:self._symbol.index("/")]]["free"]
 
 
-	def _get_current_price(self) -> float:
-		return self._client.fetch_ticker(self._symbol)["close"]
+	async def _get_current_price(self, symbol: str) -> float:
+		ticker = await self._aretry.call(self._exchange.fetch_ticker, symbol)
+
+		return ticker["last"]
 
 
-	def _get_historical_data(self):
+	async def _curr_timestamp(self, symbol: str):
+		ticker = await self._aretry.call(self._exchange.fetch_ticker, symbol)
 
-		dist = self._rsi_period * self._rsi_timeframe
-		base = self._client.fetch_ticker("BTC/USD")["timestamp"] / 1000
+		return ticker["timestamp"]
+
+
+	async def _get_historical_data(self, symbol: str):
+		n_orders = self._rsi_period * self._rsi_timeframe
 		
-		since = datetime.fromtimestamp(base) - timedelta(minutes=dist)
+		base = await self._curr_timestamp(symbol)
+		base /= 1000
+		
+		since = datetime.fromtimestamp(base) - timedelta(minutes=n_orders)
+		since = since.timestamp() * 1000
 
-		prices = self._client.fetch_ohlcv(self._symbol, "1m",
-			since=since.timestamp()*1000)[:-1]
+		prices = await self._aretry.call(self._exchange.fetch_ohlcv, 
+			self._symbol, "1m", since=since)
 
 		close_prices = [p[4] for p in prices]
 
@@ -63,80 +90,106 @@ class Bot:
 		return close_prices
 
 
+	async def _acalc_rsi(self, symbol: str):
+		data = await self._get_historical_data(symbol)
+
+		rsi = processor.calc_rsi(symbol, self._rsi_period)
+
+		return {symbol: rsi}
+
+
 	async def start(self):
-
-		sell_hits = 0
-		buy_hits = 0
-
-		curr_bought = 0 
-		curr_sold = 0
+		await self._aretry.call(exchange.load_markets)
 
 		while True:
-			available_balance = self._get_available_balance()
-			current_price = self._get_current_price()
 
-			prices = self._get_historical_data()
-			current_rsi = processor.calculate_rsi(prices, self._rsi_period)
+			if not self._symbol:
+				symbols = [
+					symbol for symbol in self._exchange.symbol
+					if not symbol.startswith(".")
+					]
 
-			self._logger.info("RSI: is {}".format(current_rsi))
+				tasks = [
+					self._acalc_rsi(symbol) 
+					for symbol in symbols
+					]
 
-			if current_rsi >= self._rsi_sell:
-				current_order_size = self._calculate_purchase_size(
-					available_balance * self._purchase_size_percentage, sell_hits)
+				rsi_vals = sorted(
+					await asyncio.gather(*tasks, return_exceptions=True).items(),
+					lambda x: x[1]
+					)
 
-				if current_order_size > available_balance:
-					current_order_size = available_balance
-
-				current_order_size = int(current_price * current_order_size)
-
-				if curr_bought > 0:
-					self._logger.info("Closing previous position by selling {0: < 4} at {1}"\
-						.format(curr_bought, current_price))
-
-				self._logger.info("Selling {0: < 4} at {1}".format(
-					current_order_size, self._get_current_price()))
-
-				try:
-					self._client.create_market_sell_order(
-						symbol=self._symbol, amount=current_order_size + curr_bought)
-				except ccxt.ExchangeEror as e:
-					print("Failed order:", e)
+			else:
+				rsi_vals = [(self._symbol, self._acalc_rsi(self._symbol))]
 
 
-				curr_sold += current_order_size
-				curr_bought = 0
+			for symbol, rsi in rsi_vals:
 
-				sell_hits += 1
-				buy_hits = 0 
+				available_balance = await self._get_available_balance()
+				current_price = await self._get_current_price()
+
+				prices = self._get_historical_data()
+				current_rsi = processor.calculate_rsi(prices, self._rsi_period)
+
+				self._logger.info("RSI: is {}".format(current_rsi))
+
+				if current_rsi >= self._rsi_sell:
+					current_order_size = self._calculate_purchase_size(
+						available_balance * self._purchase_size_percentage, sell_hits)
+
+					if current_order_size > available_balance:
+						current_order_size = available_balance
+
+					current_order_size = int(current_price * current_order_size)
+
+					if curr_bought > 0:
+						self._logger.info("Closing previous position by selling {0: < 4} at {1}"\
+							.format(curr_bought, current_price))
+
+					self._logger.info("Selling {0: < 4} at {1}".format(
+						current_order_size, self._get_current_price()))
+
+					try:
+						self._exchange.create_market_sell_order(
+							symbol=self._symbol, amount=current_order_size + curr_bought)
+					except ccxt.ExchangeEror as e:
+						print("Failed order:", e)
 
 
-			elif current_rsi <= self._rsi_buy:
-				current_order_size = self._calculate_purchase_size(
-					available_balance * self._purchase_size_percentage, buy_hits)
+					curr_sold += current_order_size
+					curr_bought = 0
 
-				if current_order_size > available_balance:
-					current_order_size = available_balance
+					sell_hits += 1
+					buy_hits = 0 
 
-				current_order_size = int(current_price * current_order_size)
 
-				if curr_sold > 0:
-					self._logger.info("Closing previous position by buying {0: < 4} at {1}"\
-						.format(curr_sold, current_price))
+				elif current_rsi <= self._rsi_buy:
+					current_order_size = self._calculate_purchase_size(
+						available_balance * self._purchase_size_percentage, buy_hits)
 
-				self._logger.info("Buying {0: < 4} at {1}".format(
-					current_order_size, self._get_current_price()))
-				
-				try:
-					self._client.create_market_buy_order(
-						symbol=self._symbol, amount=current_order_size + curr_sold)
-				except ccxt.ExchangeEror as e:
-					print("Failed order:", e)
+					if current_order_size > available_balance:
+						current_order_size = available_balance
 
-				curr_bought += current_order_size
-				curr_sold = 0
+					current_order_size = int(current_price * current_order_size)
 
-				buy_hits += 1
-				sell_hits = 0
+					if curr_sold > 0:
+						self._logger.info("Closing previous position by buying {0: < 4} at {1}"\
+							.format(curr_sold, current_price))
+
+					self._logger.info("Buying {0: < 4} at {1}".format(
+						current_order_size, self._get_current_price()))
+					
+					try:
+						self._exchange.create_market_buy_order(
+							symbol=self._symbol, amount=current_order_size + curr_sold)
+					except ccxt.ExchangeEror as e:
+						print("Failed order:", e)
+
+					curr_bought += current_order_size
+					curr_sold = 0
+
+					buy_hits += 1
+					sell_hits = 0
 
 			
 			else:

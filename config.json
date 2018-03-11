@@ -6,10 +6,10 @@
 
 	"rsi_timeframe": 1,
 	"rsi_period": 4,
-	"rsi_sell": 68,
-	"rsi_buy": 32,
+	"rsi_sell": 70,
+	"rsi_buy": 30,
 
 	"purchase_size_percentage": 0.12,
-	"bot_refresh_speed": 60,
+	"update_interval": 60,
 	"debug": false
 }

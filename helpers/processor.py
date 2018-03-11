@@ -1,7 +1,7 @@
 
 from datetime import datetime, timedelta
 
-def calculate_rsi(prices: list, period: int) -> float:
+def calc_rsi(prices: list, period: int) -> float:
 
 	max_len = period if period < len(prices) else len(prices)
 
