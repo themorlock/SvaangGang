@@ -1,5 +1,4 @@
 
-from datetime import datetime, timedelta
 
 def calc_rsi(prices: list, period: int) -> float:
 

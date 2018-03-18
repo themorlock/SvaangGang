@@ -8,7 +8,8 @@ import sys
 import ccxt.async as ccxt
 
 sys.path.append("helpers")
-import processor
+from exchange_processor import ExchangeProcessor
+
 
 class Bot:
 	def __init__(self, config: dict, logger, exchange=None):
@@ -23,7 +24,6 @@ class Bot:
 		self._rsi_buy = config["rsi_buy"]
 
 		self._purchase_size_percentage = config["purchase_size_percentage"]
-
 		self._update_interval = config["update_interval"]
 
 		if exchange:
@@ -35,6 +35,8 @@ class Bot:
 				"secret": config["secret"]
 			})
 
+		self._ep = ExchangeProcessor(self._exchange, self._logger)
+
 		self._aretry = tenacity.AsyncRetrying(
 			wait=tenacity.wait_random(0, 2),
 			retry=(
@@ -45,57 +47,11 @@ class Bot:
 
 		self._active_markets = {}
 		if self._symbol:
-			self._active_markets[symbol] = {"buys": 0, "sells": 0}
+			self._active_markets[self._symbol] = {"buys": 0, "sells": 0}
 
 
 	def _calculate_purchase_size(self, base_purchase_size: int, hits: int):
 		return base_purchase_size * (1.61*hits + 1)
-
-	
-	async def _get_available_balance(self):
-		bal = await self._exchange.fetch_balance()
-		self._logger.debug(bal)
-
-		return bal[self._symbol[:self._symbol.index("/")]]["free"]
-
-
-	async def _get_current_price(self, symbol: str) -> float:
-		ticker = await self._aretry.call(self._exchange.fetch_ticker, symbol)
-
-		return ticker["last"]
-
-
-	async def _curr_timestamp(self, symbol: str):
-		ticker = await self._aretry.call(self._exchange.fetch_ticker, symbol)
-
-		return ticker["timestamp"]
-
-
-	async def _get_historical_data(self, symbol: str):
-		n_orders = self._rsi_period * self._rsi_timeframe
-		
-		base = await self._curr_timestamp(symbol)
-		base /= 1000
-		
-		since = datetime.fromtimestamp(base) - timedelta(minutes=n_orders)
-		since = since.timestamp() * 1000
-
-		prices = await self._aretry.call(self._exchange.fetch_ohlcv, 
-			self._symbol, "1m", since=since)
-
-		close_prices = [p[4] for p in prices]
-
-		self._logger.debug(close_prices)
-
-		return close_prices
-
-
-	async def _acalc_rsi(self, symbol: str):
-		data = await self._get_historical_data(symbol)
-
-		rsi = processor.calc_rsi(symbol, self._rsi_period)
-
-		return {symbol: rsi}
 
 
 	async def start(self):
@@ -120,20 +76,18 @@ class Bot:
 					)
 
 			else:
-				rsi_vals = [(self._symbol, self._acalc_rsi(self._symbol))]
+				rsi_vals = [self._ep.acalc_rsi(self._symbol)]
 
 
 			for symbol, rsi in rsi_vals:
 
-				available_balance = await self._get_available_balance()
-				current_price = await self._get_current_price()
-
-				prices = self._get_historical_data()
-				current_rsi = processor.calculate_rsi(prices, self._rsi_period)
+				available_balance = await self._ep._get_available_balance()
+				current_price = await self._ep.get_current_price()
+				curr_rsi = await self._ep.acalc_rsi(symbol, self._rsi_period)
 
 				self._logger.info("RSI: is {}".format(current_rsi))
 
-				if current_rsi >= self._rsi_sell:
+				if curr_rsi >= self._rsi_sell:
 					current_order_size = self._calculate_purchase_size(
 						available_balance * self._purchase_size_percentage, sell_hits)
 
@@ -163,7 +117,7 @@ class Bot:
 					buy_hits = 0 
 
 
-				elif current_rsi <= self._rsi_buy:
+				elif curr_rsi <= self._rsi_buy:
 					current_order_size = self._calculate_purchase_size(
 						available_balance * self._purchase_size_percentage, buy_hits)
 
