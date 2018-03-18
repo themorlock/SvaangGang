@@ -3,16 +3,12 @@ import logging
 import asyncio
 import json
 
-import trading_bot
+from app import trading_bot, configurator
 
 import ccxt.async as ccxt
 
+
 BOT_CONFIG = "config.json"
-
-
-def get_config(file: str) -> dict:
-	with open(file, "r") as f:
-		return json.load(f)
 
 
 def setup_logging(config: dict) -> None:
@@ -55,18 +51,19 @@ def get_exchange(config: dict) -> ccxt.exchange:
 
 
 def main():
-	config = get_config(BOT_CONFIG)
+	config = configurator.Config(file=BOT_CONFIG)
+	setup_conf = config.conf
 
-	setup_logging(LOG_CONFIG, config)
+	setup_logging(setup_conf)
 
 	logger = logging.getLogger()
 	logger.info("Starting System...")
 
-	exchange = get_exchange(config)
+	exchange = get_exchange(setup_conf)
 
 	logger.info("Connected To Servers!!!")
 
-	bot = trading_bot.Bot(config=config, logger=logger, client=client)
+	bot = trading_bot.Bot(config=config.bot, logger=logger, client=client)
 
 	logger.info("Starting")
 

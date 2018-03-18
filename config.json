@@ -1,15 +1,23 @@
 {
 	"secret": "your secret here",
 	"key": "your key here",
-	"symbol": "BTC/USD",
+	"indicator": "RSI",
+	"debug": false,
 	"test": true,
 
-	"rsi_timeframe": 1,
-	"rsi_period": 4,
-	"rsi_sell": 70,
-	"rsi_buy": 30,
+	"Indicators": {
+		"RSI": {
+			"timeframe": 1,
+			"distance": 500,
+			"period": 4,
+			"sell": 70,
+			"buy": 30,
+		} 	
+	},
 
-	"purchase_size_percentage": 0.12,
-	"update_interval": 60,
-	"debug": false
+	"Bot": {
+		"purchase_size_percentage": 0.12,
+		"update_interval": 60,
+		"symbol": "BTC/USD",
+	}
 }

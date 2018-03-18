@@ -7,7 +7,7 @@ import tenacity
 import rsi
 
 
-class ExchangeProcessor:
+class Utils:
 	def __init__(self, exchange: ccxt.Exchange, logger): 
 		self._exchange = exchange
 		self._logger = logger
@@ -25,6 +25,7 @@ class ExchangeProcessor:
 		bal = await self._exchange.fetch_balance()
 		self._logger.debug(bal)
 
+		print(bal)
 		return bal[self._symbol[:self._symbol.index("/")]]["free"]
 		
 
@@ -41,13 +42,11 @@ class ExchangeProcessor:
 		return ticker["timestamp"]
 
 
-	async def _get_historical_data(self, symbol: str, period: int, timeframe: int):
-		n_orders = self._rsi_period * self._rsi_timeframe
-		
+	async def _get_historical_data(self, symbol: str, length: int):
 		base = await self._curr_timestamp(symbol)
 		base /= 1000
 		
-		since = datetime.fromtimestamp(base) - timedelta(minutes=n_orders)
+		since = datetime.fromtimestamp(base) - timedelta(minutes=length)
 		since = since.timestamp() * 1000
 
 		prices = await self._aretry.call(self._exchange.fetch_ohlcv, 
@@ -58,12 +57,3 @@ class ExchangeProcessor:
 		self._logger.debug(close_prices)
 
 		return close_prices
-
-
-	async def acalc_rsi(self, symbol: str, period: int):
-		data = await self._get_historical_data(symbol)
-
-		rsi = rsi.calc_rsi(symbol, period)
-		self._logger.debug(rsi)
-
-		return symbol, rsi
