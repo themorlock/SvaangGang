@@ -8,10 +8,10 @@
 	"Indicators": {
 		"RSI": {
 			"timeframe": 1,
-			"distance": 15,
-			"period": 14,
-			"sell": 60,
-			"buy": 40
+			"distance": 4,
+			"period": 4,
+			"sell": 70,
+			"buy": 30
 		}
 	},
 

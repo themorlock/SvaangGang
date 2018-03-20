@@ -29,7 +29,7 @@ class RSI(Indicator):
 					gains.append(change)
 
 			except TypeError as e:
-				print(e + " " + prices)
+				print(e, prices)
 
 		avg_loss = sum(losses) / period
 		avg_gain = sum(gains) / period
