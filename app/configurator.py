@@ -3,6 +3,7 @@ import json
 
 from indicators import rsi
 
+
 def get_config(file: str) -> dict:
 	with open(file, "r") as f:
 		return json.load(f)

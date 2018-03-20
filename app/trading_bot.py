@@ -3,11 +3,13 @@ from datetime import datetime, timedelta
 import tenacity
 import logging
 import asyncio
+import math
 import sys
 
 import ccxt.async as ccxt
 
 from utils import Utils 
+
 
 HOLD = "HOLD"
 SELL = "SELL"
@@ -88,7 +90,7 @@ class Bot:
 					if order_size > bal:
 						order_size = bal
 
-					order_size = int(curr_p * order_size)
+					order_size = math.floor(curr_p * order_size)
 					market["curr_sold"] += order_size
 
 					self.logger.info("Selling {0: < 4} at {1}".format(
@@ -96,7 +98,7 @@ class Bot:
 
 					addnl = market["curr_bought"]
 					if addnl > 0:
-						self.logger.info("Buying {0: < 4} to close open shorts".format(
+						self.logger.info("Selling {0: < 4} to close open longs".format(
 						addnl))
 						order_size += addnl
 						market["curr_bought"] = 0
@@ -113,7 +115,7 @@ class Bot:
 					if order_size > bal:
 						order_size = bal
 
-					order_size = int(curr_p * order_size)
+					order_size = math.floor(curr_p * order_size)
 					market["curr_bought"] += order_size
 
 					self.logger.info("Buying {0: < 4} at {1}".format(
