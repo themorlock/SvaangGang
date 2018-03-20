@@ -54,35 +54,6 @@ class Bot:
 		return symbols
 
 
-	async def close_positions(self, symbol, price=None):
-		sells = self._markets[symbol]["curr_sold"]
-		buys = self._markets[symbol]["curr_bought"]
-
-		if sells > 0:
-			self.logger.info("Buying {0: < 4} to close shorts".format(sells))
-		if buys > 0:
-			self.logger.info("Selling {0: < 4} to close longs".format(buys))
-
-		if price:
-			# buy longs to close shorts
-			if sells > 0:
-				await self._exchange.create_limit_buy_order(symbol, sells, price)
-			# buy shorts to close longs
-			if buys > 0:
-				await self._exchange.create_limit_sell_order(symbol, buys, price)
-
-		else:
-			# buy longs to close shorts
-			if sells > 0:
-				await self._exchange.create_market_buy_order(symbol, sells)
-			# buy shorts to close longs
-			if buys > 0:
-				await self._exchange.create_market_sell_order(symbol, buys)
-
-		self._markets[symbol]["curr_sold"] = 0
-		self._markets[symbol]["curr_bought"] = 0
-
-
 	async def start(self):
 		await self._aretry.call(self._exchange.load_markets)
 
@@ -118,13 +89,14 @@ class Bot:
 
 					order_size = int(curr_p * order_size)
 
+					order_size += self._markets[symbol]["curr_bought"] # close longs
 					await self._exchange.create_market_sell_order(symbol, order_size)
-					await self.close_positions(symbol)
 
 					self.logger.info("Selling {0: < 4} at {1}".format(
 						order_size, curr_p))
 
 					self._markets[symbol]["curr_sold"] += order_size
+					self._markets[symbol]["curr_bought"] = 0
 
 					self._markets[symbol]["sells"] += 1
 					self._markets[symbol]["buys"] = 0 
@@ -139,12 +111,13 @@ class Bot:
 
 					order_size = int(curr_p * order_size)
 
+					order_size += self._markets[symbol]["curr_sold"] # close shorts
 					await self._exchange.create_market_buy_order(symbol, order_size)
-					await self.close_positions(symbol)
 
 					self.logger.info("Buying {0: < 4} at {1}".format(
 						order_size, curr_p))
 
+					self._markets[symbol]["curr_sold"] = 0
 					self._markets[symbol]["curr_bought"] += order_size
 
 					self._markets[symbol]["sells"] = 0

@@ -61,13 +61,6 @@ class Utils:
 		return close_prices
 
 
-	async def sufficient_funds(self, order_size) -> bool:
-		if await get_available_balance >= order_size:
-			return True
-
-		return False
-
-
 	async def purchase_size(self, strat: str, base: float=0.1, sells=0,
 		buys=0, bal=None) -> float:
 
