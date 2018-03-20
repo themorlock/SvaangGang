@@ -3,8 +3,8 @@ from indicator import Indicator
 
 
 class RSI(Indicator):
-	def __init__(self, utils, config):
-		Indicator.__init__(self, utils, config)
+	def __init__(self, utils, config, logger):
+		Indicator.__init__(self, utils, config, logger)
 
 		self.timeframe = self.conf["timeframe"]
 		self.distance = self.conf["distance"]
@@ -13,7 +13,7 @@ class RSI(Indicator):
 		self.buy = self.conf["buy"]
 
 
-	def calc_rsi(prices: list) -> float:
+	def calc_rsi(self, prices: list) -> float:
 		period = self.period
 		max_len = period if period < len(prices) else len(prices)
 
@@ -55,11 +55,11 @@ class RSI(Indicator):
 
 
 	async def acalc_rsi(self, symbol: str):
-		data = await self._get_historical_data(symbol, 
+		data = await self.utils.get_historical_data(symbol, 
 			length=self.distance * self.timeframe)
 
-		rsi = rsi.calc_rsi(data, self.period)
-		self._logger.debug(rsi)
+		rsi = self.calc_rsi(data)
+		self.logger.debug(rsi)
 
 		return rsi
 
@@ -74,4 +74,8 @@ class RSI(Indicator):
 
 		return symbol, rsi, "HOLD"
 
-	__repr__ = "RSI"
+
+	def __str__(self):
+		return "RSI"
+
+	__repr__ = __str__

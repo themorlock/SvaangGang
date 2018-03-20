@@ -1,10 +1,8 @@
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import ccxt.async as ccxt
 import tenacity
-
-import rsi
 
 
 class Utils:
@@ -20,20 +18,24 @@ class Utils:
 				)
 			)	
 
+		self.purchase_strategies = {
+
+		}
 
 	async def get_available_balance(self):
 		bal = await self._exchange.fetch_balance()
-		self._logger.debug(bal)
+		bal = bal["BTC"]["free"]
 
-		print(bal)
-		return bal[self._symbol[:self._symbol.index("/")]]["free"]
+		self._logger.debug("Balance {0}".format(bal))
+
+		return bal
 		
 
 	async def get_current_price(self, symbol: str) -> float:
 		ticker = await self._aretry.call(self._exchange.fetch_ticker, symbol)
 		self._logger.debug(ticker)
 
-		return ticker["last"]
+		return ticker["close"]
 
 
 	async def _curr_timestamp(self, symbol: str):
@@ -42,7 +44,7 @@ class Utils:
 		return ticker["timestamp"]
 
 
-	async def _get_historical_data(self, symbol: str, length: int):
+	async def get_historical_data(self, symbol: str, length: int):
 		base = await self._curr_timestamp(symbol)
 		base /= 1000
 		
@@ -50,10 +52,34 @@ class Utils:
 		since = since.timestamp() * 1000
 
 		prices = await self._aretry.call(self._exchange.fetch_ohlcv, 
-			self._symbol, "1m", since=since)
+			symbol, "1m", since=since, limit=length)
 
 		close_prices = [p[4] for p in prices]
 
 		self._logger.debug(close_prices)
 
 		return close_prices
+
+
+	async def sufficient_funds(self, order_size) -> bool:
+		if await get_available_balance >= order_size:
+			return True
+
+		return False
+
+
+	async def purchase_size(self, strat: str, base: float=0.1, sells=0,
+		buys=0, bal=None) -> float:
+
+		if not bal:
+			bal = await self.get_available_balance()
+
+		base *= bal
+
+		k = abs(sells-buys)
+		if strat == "linear":
+			size = (1.61 * k + 1) * base
+			if size > bal:
+				size = bal
+
+			return size

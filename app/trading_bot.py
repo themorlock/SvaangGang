@@ -9,21 +9,23 @@ import ccxt.async as ccxt
 
 from utils import Utils 
 
-
 HOLD = "HOLD"
 SELL = "SELL"
 BUY = "BUY"
 
 class Bot:
-	def __init__(self, config: dict, logger, exchange=None):
+	def __init__(self, config: dict, logger, exchange):
 		self.conf = config
 		self.logger = logger
 		self._exchange = exchange
 
-		self._symbol = self.conf["symbol"]
+		cfg = config.bot
 
-		self._purchase_size_percentage = self.conf["purchase_size_percentage"]
-		self._update_interval = self.conf["update_interval"]
+		self._purchase_size_percentage = cfg["purchase_size_percentage"]
+		self._update_interval = cfg["update_interval"]
+		self._symbol = cfg["symbol"]
+
+		self.util = Utils(self._exchange, self.logger)
 
 		self._aretry = tenacity.AsyncRetrying(
 			wait=tenacity.wait_random(0, 2),
@@ -33,9 +35,11 @@ class Bot:
 				)
 			)
 
-		self._active_markets = {}
+		self._markets = {}
 		if self._symbol:
-			self._active_markets[self._symbol] = {"buys": 0, "sells": 0}
+			self._markets[self._symbol] = {
+				"curr_sold": 0, "curr_bought": 0, "buys": 0, "sells": 0
+				}
 
 
 	async def get_symbols(self):
@@ -50,93 +54,100 @@ class Bot:
 		return symbols
 
 
-	def _calculate_purchase_size(self, base_purchase_size: int, hits: int):
-		return base_purchase_size * (1.61*hits + 1)
+	async def close_positions(self, symbol, price=None):
+		sells = self._markets[symbol]["curr_sold"]
+		buys = self._markets[symbol]["curr_bought"]
+
+		if sells > 0:
+			self.logger.info("Buying {0: < 4} to close shorts".format(sells))
+		if buys > 0:
+			self.logger.info("Selling {0: < 4} to close longs".format(buys))
+
+		if price:
+			# buy longs to close shorts
+			if sells > 0:
+				await self._exchange.create_limit_buy_order(symbol, sells, price)
+			# buy shorts to close longs
+			if buys > 0:
+				await self._exchange.create_limit_sell_order(symbol, buys, price)
+
+		else:
+			# buy longs to close shorts
+			if sells > 0:
+				await self._exchange.create_market_buy_order(symbol, sells)
+			# buy shorts to close longs
+			if buys > 0:
+				await self._exchange.create_market_sell_order(symbol, buys)
+
+		self._markets[symbol]["curr_sold"] = 0
+		self._markets[symbol]["curr_bought"] = 0
 
 
 	async def start(self):
-		await self._aretry.call(exchange.load_markets)
+		await self._aretry.call(self._exchange.load_markets)
 
-		indicator = self.conf.get_indicator()()
+		indicator = self.conf.bot["indicator"]
+		indicator = self.conf.indicators[indicator](
+			self.util, self.conf.c_indicators[indicator], self.logger)
 
 		while True:
 
-			symbols = self.get_symbols()
+			symbols = await self.get_symbols()
 
 			tasks = [
 				indicator.analyze(symbol) 
 				for symbol in symbols
 				]
 
-			indications = await asyncio.gather(*tasks, return_exceptions=True)
+			indications = await asyncio.gather(*tasks)
 
 			for symbol, val, heuristic in indications:
 
-				available_balance = await self._ep._get_available_balance()
-				current_price = await self._ep.get_current_price()
+				bal = await self.util.get_available_balance()
+				curr_p = await self.util.get_current_price(symbol)
 
-				self._logger.info("{0}'s {1} is {2} and heuristic is {3}".format(
+				self.logger.info("{0}'s {1} is {2} and heuristic is {3}".format(
 					symbol, indicator, val, heuristic))
 
 				if heuristic == SELL:
-					current_order_size = self._calculate_purchase_size(
-						available_balance * self._purchase_size_percentage, sell_hits)
+					order_size = await self.util.purchase_size("linear", bal, 
+						sells=self._markets[symbol]["sells"])
 
-					if current_order_size > available_balance:
-						current_order_size = available_balance
+					if order_size > bal:
+						order_size = bal
 
-					current_order_size = int(current_price * current_order_size)
+					order_size = int(curr_p * order_size)
 
-					if curr_bought > 0:
-						self._logger.info("Closing previous position by selling {0: < 4} at {1}"\
-							.format(curr_bought, current_price))
+					await self._exchange.create_market_sell_order(symbol, order_size)
+					await self.close_positions(symbol)
 
-					self._logger.info("Selling {0: < 4} at {1}".format(
-						current_order_size, self._get_current_price()))
+					self.logger.info("Selling {0: < 4} at {1}".format(
+						order_size, curr_p))
 
-					try:
-						self._exchange.create_market_sell_order(
-							symbol=self._symbol, amount=current_order_size + curr_bought)
+					self._markets[symbol]["curr_sold"] += order_size
 
-					except ccxt.ExchangeEror as e:
-						print("Failed order:", e)
-
-					curr_sold += current_order_size
-					curr_bought = 0
-
-					sell_hits += 1
-					buy_hits = 0 
+					self._markets[symbol]["sells"] += 1
+					self._markets[symbol]["buys"] = 0 
 
 
 				elif heuristic == BUY:
-					current_order_size = self._calculate_purchase_size(
-						available_balance * self._purchase_size_percentage, buy_hits)
+					order_size = await self.util.purchase_size("linear", bal, 
+						buys=self._markets[symbol]["buys"])
 
-					if current_order_size > available_balance:
-						current_order_size = available_balance
+					if order_size > bal:
+						order_size = bal
 
-					current_order_size = int(current_price * current_order_size)
+					order_size = int(curr_p * order_size)
 
-					if curr_sold > 0:
-						self._logger.info("Closing previous position by buying {0: < 4} at {1}"\
-							.format(curr_sold, current_price))
+					await self._exchange.create_market_buy_order(symbol, order_size)
+					await self.close_positions(symbol)
 
-					self._logger.info("Buying {0: < 4} at {1}".format(
-						current_order_size, self._get_current_price()))
-					
-					try:
-						self._exchange.create_market_buy_order(
-							symbol=self._symbol, amount=current_order_size + curr_sold)
-					except ccxt.ExchangeEror as e:
-						print("Failed order:", e)
+					self.logger.info("Buying {0: < 4} at {1}".format(
+						order_size, curr_p))
 
-					curr_bought += current_order_size
-					curr_sold = 0
+					self._markets[symbol]["curr_bought"] += order_size
 
-					buy_hits += 1
-					sell_hits = 0
+					self._markets[symbol]["sells"] = 0
+					self._markets[symbol]["buys"] += 1
 			
-			else:
-				self._logger.info("Holding")
-
-			await asyncio.sleep(self._bot_refresh_speed)
+			await asyncio.sleep(self._update_interval)

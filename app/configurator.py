@@ -1,7 +1,7 @@
 
 import json
 
-from indicators import *
+from indicators import rsi
 
 def get_config(file: str) -> dict:
 	with open(file, "r") as f:
@@ -19,13 +19,9 @@ class Config:
 
 		self.conf = config
 
-		self.indicator = self.conf["Indicators"]
-		self.rsi = self.indicator_config["RSI"]
+		self.c_indicators = self.conf["Indicators"]
 		self.bot = self.conf["Bot"]
 
 		self.indicators = {
 			"RSI": rsi.RSI,
 		}
-
-	def get_indicator(self):
-		return self.indicators[self.indicator]

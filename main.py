@@ -2,11 +2,13 @@
 import logging
 import asyncio
 import json
-
-from app import trading_bot, configurator
+import sys
 
 import ccxt.async as ccxt
 
+sys.path.append("app")
+sys.path.append("app/indicators")
+from app import trading_bot, configurator
 
 BOT_CONFIG = "config.json"
 
@@ -31,7 +33,7 @@ def setup_logging(config: dict) -> None:
 	logger.setLevel(level)
 
 
-def get_exchange(config: dict) -> ccxt.exchange:
+def get_exchange(config: dict) -> ccxt.Exchange:
 	if config["test"]:
 		client = ccxt.bitmex({
 			"urls": {
@@ -62,8 +64,7 @@ def main():
 	exchange = get_exchange(setup_conf)
 
 	logger.info("Connected To Servers!!!")
-
-	bot = trading_bot.Bot(config=config.bot, logger=logger, client=client)
+	bot = trading_bot.Bot(config, logger, exchange)
 
 	logger.info("Starting")
 
