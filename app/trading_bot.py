@@ -15,6 +15,7 @@ HOLD = "HOLD"
 SELL = "SELL"
 BUY = "BUY"
 
+
 class Bot:
 	def __init__(self, config: dict, logger, exchange):
 		self.conf = config
@@ -103,7 +104,8 @@ class Bot:
 						order_size += addnl
 						market["curr_bought"] = 0
 
-					await self._exchange.create_market_sell_order(symbol, order_size)
+					await self._exchange.create_limit_sell_order(symbol, 
+						order_size, curr_p)
 
 					market["sells"] += 1
 					market["buys"] = 0
@@ -128,7 +130,8 @@ class Bot:
 						order_size += addnl
 						market["curr_sold"] = 0
 
-					await self._exchange.create_market_buy_order(symbol, order_size)
+					await self._exchange.create_limit_buy_order(symbol, 
+						order_size, curr_p)
 
 					market["sells"] = 0
 					market["buys"] += 1
