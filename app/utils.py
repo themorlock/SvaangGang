@@ -51,10 +51,10 @@ class Utils:
 		since = datetime.fromtimestamp(base) - timedelta(minutes=length)
 		since = since.timestamp() * 1000
 
-		prices = await self._aretry.call(self._exchange.fetch_ohlcv, 
-			symbol, "1m", since=since, limit=length)
+		ohlcv = await self._aretry.call(self._exchange.fetch_ohlcv, 
+			symbol, "1m", since=since, limit=length+1)
 
-		close_prices = [p[4] for p in prices]
+		close_prices = [p[4] for p in ohlcv]
 
 		self._logger.debug(close_prices)
 

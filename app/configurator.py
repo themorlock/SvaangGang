@@ -20,7 +20,6 @@ class Config:
 		self.conf = config
 
 		self.c_indicators = self.conf["Indicators"]
-		self.c_indicators["RSI"]["distance"] += 1
 		self.bot = self.conf["Bot"]
 
 		self.indicators = {

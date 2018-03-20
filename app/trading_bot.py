@@ -80,47 +80,57 @@ class Bot:
 				self.logger.info("{0}'s {1} is {2} and heuristic is {3}".format(
 					symbol, indicator, val, heuristic))
 
+				market = self._markets[symbol]
 				if heuristic == SELL:
 					order_size = await self.util.purchase_size("linear", bal, 
-						sells=self._markets[symbol]["sells"])
+						sells=market["sells"])
 
 					if order_size > bal:
 						order_size = bal
 
 					order_size = int(curr_p * order_size)
-
-					order_size += self._markets[symbol]["curr_bought"] # close longs
-					await self._exchange.create_market_sell_order(symbol, order_size)
+					market["curr_sold"] += order_size
 
 					self.logger.info("Selling {0: < 4} at {1}".format(
 						order_size, curr_p))
 
-					self._markets[symbol]["curr_sold"] += order_size
-					self._markets[symbol]["curr_bought"] = 0
+					addnl = market["curr_bought"]
+					if addnl > 0:
+						self.logger.info("Buying {0: < 4} to close open shorts".format(
+						addnl))
+						order_size += addnl
+						market["curr_bought"] = 0
 
-					self._markets[symbol]["sells"] += 1
-					self._markets[symbol]["buys"] = 0 
+					await self._exchange.create_market_sell_order(symbol, order_size)
 
+					market["sells"] += 1
+					market["buys"] = 0
 
 				elif heuristic == BUY:
 					order_size = await self.util.purchase_size("linear", bal, 
-						buys=self._markets[symbol]["buys"])
+						buys=market["buys"])
 
 					if order_size > bal:
 						order_size = bal
 
 					order_size = int(curr_p * order_size)
-
-					order_size += self._markets[symbol]["curr_sold"] # close shorts
-					await self._exchange.create_market_buy_order(symbol, order_size)
+					market["curr_bought"] += order_size
 
 					self.logger.info("Buying {0: < 4} at {1}".format(
 						order_size, curr_p))
 
-					self._markets[symbol]["curr_sold"] = 0
-					self._markets[symbol]["curr_bought"] += order_size
+					addnl = market["curr_sold"]
+					if addnl > 0:
+						self.logger.info("Buying {0: < 4} to close open shorts".format(
+						addnl))
+						order_size += addnl
+						market["curr_sold"] = 0
 
-					self._markets[symbol]["sells"] = 0
-					self._markets[symbol]["buys"] += 1
+					await self._exchange.create_market_buy_order(symbol, order_size)
+
+					market["sells"] = 0
+					market["buys"] += 1
+
+				self._markets[symbol] = market
 			
 			await asyncio.sleep(self._update_interval)
